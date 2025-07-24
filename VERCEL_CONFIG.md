@@ -12,6 +12,15 @@ As variáveis de ambiente não foram configuradas no painel da Vercel.
 2. Clique no seu projeto **FoncareSystem**
 
 ### **Passo 2: Configurar Variáveis**
+
+#### **Opção A: Importar arquivo .env.local (MAIS FÁCIL) 🚀**
+1. Clique em **"Settings"** (aba superior)
+2. No menu lateral, clique em **"Environment Variables"**
+3. Clique no botão **"Import .env File"**
+4. Selecione o arquivo: `c:\Users\Douglas Araújo\Desktop\FoncareSystem\.env.local`
+5. Confirme e clique **"Import"**
+
+#### **Opção B: Adicionar manualmente (uma por vez)**
 1. Clique em **"Settings"** (aba superior)
 2. No menu lateral, clique em **"Environment Variables"**
 3. Adicione estas variáveis uma por uma:
