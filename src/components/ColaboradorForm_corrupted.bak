@@ -1,0 +1,1741 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { X, User, Briefcase, Users, Plus, FileText, Trash2 } from 'lucide-react';
+import { rhService, Colaborador, Dependente, Unidade } from '../lib/rhService';
+import DocumentosManager from './DocumentosManager';
+
+interface ColaboradorFormProps {
+  colaboradorId?: string;
+  onSave: () => void;
+  onCancel: () => void;
+}
+
+const ColaboradorForm: React.FC<ColaboradorFormProps> = ({ colaboradorId, onSave, onCancel }) => {
+  const [activeTab, setActiveTab] = useState<'pessoal' | 'documentos' | 'profissional' | 'dependentes'>('pessoal');
+  const [loading, setLoading] = useState(false);
+  const [unidades, setUnidades] = useState<Unidade[]>([]);
+  const [dependentes, setDependentes] = useState<Dependente[]>([]);
+  
+  const [formData, setFormData] = useState<Partial<Colaborador>>({
+    // Dados Pessoais
+    nome_completo: '',
+    data_nascimento: '',
+    genero: undefined,
+    estado_civil: undefined,
+    nacionalidade: 'Brasileira',
+    naturalidade_cidade: '',
+    naturalidade_estado: '',
+    nome_mae: '',
+    nome_pai: '',
+    
+    // Documentos
+    cpf: '',
+    rg: '',
+    rg_orgao_emissor: '',
+    rg_uf: '',
+    titulo_eleitor: '',
+    cnh: '',
+    cnh_categoria: '',
+    cnh_vencimento: '',
+    
+    // Endereço
+    endereco_logradouro: '',
+    endereco_numero: '',
+    endereco_complemento: '',
+    endereco_bairro: '',
+    endereco_cidade: '',
+    endereco_estado: '',
+    endereco_cep: '',
+    
+    // Contato
+    telefone_celular: '',
+    telefone_fixo: '',
+    email_pessoal: '',
+    
+    // Dados Bancários
+    banco_codigo: '',
+    banco_nome: '',
+    banco_agencia: '',
+    banco_agencia_digito: '',
+    banco_conta: '',
+    banco_conta_digito: '',
+    banco_tipo_conta: undefined,
+    banco_pix: '',
+    
+    // Dados Profissionais
+    cargo: '',
+    cbo: '',
+    departamento: '',
+    centro_custo: '',
+    unidade_id: '',
+    tipo_colaborador: undefined,
+    regime_contratacao: 'clt',
+    jornada_horario_inicio: '',
+    jornada_horario_fim: '',
+    jornada_carga_semanal: 40,
+    carga_horaria_semanal: 40,
+    escala_trabalho: undefined,
+    periodo_experiencia: null,
+    data_admissao: '',
+    data_demissao: '',
+    motivo_demissao: undefined,
+    
+    // Salários e Benefícios
+    salario_base: null,
+    salario_valor: null,
+    insalubridade: null,
+    periculosidade: null,
+    comissao_tipo: '',
+    comissao_percentual: 0,
+    
+    // Benefícios (valores)
+    vale_transporte_valor: null,
+    vale_refeicao: null,
+    vale_alimentacao_valor: null,
+    plano_saude: null,
+    plano_odontologico: null,
+    seguro_vida: null,
+    
+    // Benefícios (booleanos)
+    vale_transporte: false,
+    vale_alimentacao: false,
+    plano_dental: false,
+    
+    // Documentos CLT
+    ctps_numero: '',
+    ctps_serie: '',
+    ctps_uf: '',
+    ctps_data_emissao: '',
+    pis_pasep: '',
+    pis_data_cadastro: '',
+    certificado_reservista: '',
+    aso_status: undefined,
+    aso_data: '',
+    aso_validade: '',
+    aso_medico: '',
+    
+    // Documentos PJ
+    cnpj: '',
+    razao_social: '',
+    nome_fantasia: '',
+    inscricao_estadual: '',
+    inscricao_municipal: '',
+    data_abertura_empresa: '',
+    atividade_principal: '',
+    contrato_social_anexado: false,
+    certificacoes_anexadas: false,
+    
+    // Documentos Gerais
+    certidao_anexada: false,
+    comprovante_residencia_anexado: false,
+    foto_3x4_anexada: false,
+    diploma_anexado: false,
+    
+    // Status
+    status: 'ativo',
+    
+    // Observações
+    observacoes: ''
+  });
+
+  useEffect(() => {
+    carregarUnidades();
+    if (colaboradorId) {
+      carregarColaborador();
+      carregarDependentes();
+    }
+  }, [colaboradorId]);
+
+  const carregarUnidades = async () => {
+    try {
+      const unidadesList = await rhService.unidadeService.listar();
+      setUnidades(unidadesList);
+    } catch (error) {
+      console.error('Erro ao carregar unidades:', error);
+    }
+  };
+
+  const carregarColaborador = async () => {
+    if (!colaboradorId) return;
+    
+    try {
+      setLoading(true);
+      const colaborador = await rhService.colaboradorService.buscarPorId(colaboradorId);
+      if (colaborador) {
+        setFormData(colaborador);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar colaborador:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const carregarDependentes = async () => {
+    if (!colaboradorId) return;
+    
+    try {
+      const dependentesList = await rhService.dependenteService.listarPorColaborador(colaboradorId);
+      setDependentes(dependentesList);
+    } catch (error) {
+      console.error('Erro ao carregar dependentes:', error);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    try {
+      setLoading(true);
+      
+      // Validações básicas dos campos obrigatórios
+      if (!formData.nome_completo || !formData.cpf || !formData.cargo || !formData.nome_mae || !formData.rg || !formData.telefone_celular || !formData.data_admissao) {
+        alert('Preencha os campos obrigatórios: Nome Completo, CPF, Cargo, Nome da Mãe, RG, Telefone Celular e Data de Admissão');
+        return;
+      }
+
+      if (colaboradorId) {
+        await rhService.colaboradorService.atualizar(colaboradorId, formData as Colaborador);
+      } else {
+        await rhService.colaboradorService.criar(formData as Colaborador);
+      }
+
+      alert('Colaborador salvo com sucesso!');
+      onSave();
+      
+    } catch (error) {
+      console.error('Erro ao salvar colaborador:', error);
+      alert('Erro ao salvar colaborador. Tente novamente.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const adicionarDependente = async () => {
+    if (!colaboradorId) {
+      alert('É necessário salvar o colaborador antes de adicionar dependentes');
+      return;
+    }
+
+    const novoDependente: Partial<Dependente> = {
+      colaborador_id: colaboradorId,
+      nome_completo: '',
+      grau_parentesco: 'filho',
+      data_nascimento: ''
+    };
+
+    try {
+      const dependenteCriado = await rhService.dependenteService.criar(novoDependente as Dependente);
+      setDependentes([...dependentes, dependenteCriado]);
+    } catch (error) {
+      console.error('Erro ao adicionar dependente:', error);
+    }
+  };
+
+  const removerDependente = async (dependenteId: string) => {
+    try {
+      await rhService.dependenteService.excluir(dependenteId);
+      setDependentes(dependentes.filter(d => d.id !== dependenteId));
+    } catch (error) {
+      console.error('Erro ao remover dependente:', error);
+    }
+  };
+
+  const atualizarDependente = async (index: number, campo: keyof Dependente, valor: any) => {
+    const dependenteAtualizado = { ...dependentes[index], [campo]: valor };
+    
+    try {
+      if (dependenteAtualizado.id) {
+        await rhService.dependenteService.atualizar(dependenteAtualizado.id, dependenteAtualizado);
+        const novosDependentes = [...dependentes];
+        novosDependentes[index] = dependenteAtualizado;
+        setDependentes(novosDependentes);
+      }
+    } catch (error) {
+      console.error('Erro ao atualizar dependente:', error);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
+        <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+              {colaboradorId ? 'Editar Colaborador' : 'Novo Colaborador'}
+            </h2>
+            <button
+              onClick={onCancel}
+              className="p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+            >
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+        </div>
+
+        <div className="overflow-y-auto" style={{ maxHeight: 'calc(90vh - 140px)' }}>
+          {/* Tabs */}
+          <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+            <div className="flex space-x-4">
+              <button
+                onClick={() => setActiveTab('pessoal')}
+                className={`px-4 py-2 rounded-lg font-medium ${
+                  activeTab === 'pessoal'
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                <User className="w-4 h-4 inline mr-2" />
+                Dados Pessoais
+              </button>
+              <button
+                onClick={() => setActiveTab('documentos')}
+                className={`px-4 py-2 rounded-lg font-medium ${
+                  activeTab === 'documentos'
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                <FileText className="w-4 h-4 inline mr-2" />
+                Documentos
+              </button>
+              <button
+                onClick={() => setActiveTab('profissional')}
+                className={`px-4 py-2 rounded-lg font-medium ${
+                  activeTab === 'profissional'
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'text-gray-600 hover:bg-gray-100'
+                }`}
+              >
+                <Briefcase className="w-4 h-4 inline mr-2" />
+                Dados Profissionais
+              </button>
+              {colaboradorId && (
+                <button
+                  onClick={() => setActiveTab('dependentes')}
+                  className={`px-4 py-2 rounded-lg font-medium ${
+                    activeTab === 'dependentes'
+                      ? 'bg-blue-100 text-blue-700'
+                      : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  <Users className="w-4 h-4 inline mr-2" />
+                  Dependentes
+                </button>
+              )}
+            </div>
+          </div>
+
+          <form onSubmit={handleSubmit} className="p-6">
+            {/* Tab Dados Pessoais */}
+            {activeTab === 'pessoal' && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Nome Completo *
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      value={formData.nome_completo || ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, nome_completo: e.target.value }))}
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      CPF *
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      value={formData.cpf || ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, cpf: e.target.value }))}
+                      placeholder="000.000.000-00"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      RG *
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      value={formData.rg || ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, rg: e.target.value }))}
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Órgão Emissor RG
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      value={formData.rg_orgao_emissor || ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, rg_orgao_emissor: e.target.value }))}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      UF do RG
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      value={formData.rg_uf || ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, rg_uf: e.target.value }))}
+                      maxLength={2}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Data de Nascimento
+                    </label>
+                    <input
+                      type="date"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      value={formData.data_nascimento || ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, data_nascimento: e.target.value }))}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Gênero
+                    </label>
+                    <select
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      value={formData.genero || ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, genero: e.target.value as any }))}
+                    >
+                      <option value="">Selecione</option>
+                      <option value="masculino">Masculino</option>
+                      <option value="feminino">Feminino</option>
+                      <option value="outro">Outro</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Estado Civil
+                    </label>
+                    <select
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      value={formData.estado_civil || ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, estado_civil: e.target.value as any }))}
+                    >
+                      <option value="">Selecione</option>
+                      <option value="solteiro">Solteiro(a)</option>
+                      <option value="casado">Casado(a)</option>
+                      <option value="divorciado">Divorciado(a)</option>
+                      <option value="viuvo">Viúvo(a)</option>
+                      <option value="uniao_estavel">União Estável</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Nome da Mãe *
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      value={formData.nome_mae || ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, nome_mae: e.target.value }))}
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Nome do Pai
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      value={formData.nome_pai || ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, nome_pai: e.target.value }))}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Nacionalidade
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      value={formData.nacionalidade || ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, nacionalidade: e.target.value }))}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Naturalidade (Cidade)
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      value={formData.naturalidade_cidade || ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, naturalidade_cidade: e.target.value }))}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Naturalidade (Estado)
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      value={formData.naturalidade_estado || ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, naturalidade_estado: e.target.value }))}
+                      maxLength={2}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Título de Eleitor
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      value={formData.titulo_eleitor || ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, titulo_eleitor: e.target.value }))}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      CNH
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      value={formData.cnh || ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, cnh: e.target.value }))}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Categoria CNH
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      value={formData.cnh_categoria || ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, cnh_categoria: e.target.value }))}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Vencimento CNH
+                    </label>
+                    <input
+                      type="date"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                      value={formData.cnh_vencimento || ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, cnh_vencimento: e.target.value }))}
+                    />
+                  </div>
+                </div>
+
+                {/* Seção de Endereço */}
+                <div className="border-t pt-6">
+                  <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Endereço</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Logradouro
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        value={formData.endereco_logradouro || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, endereco_logradouro: e.target.value }))}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Número
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        value={formData.endereco_numero || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, endereco_numero: e.target.value }))}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Complemento
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        value={formData.endereco_complemento || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, endereco_complemento: e.target.value }))}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Bairro
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        value={formData.endereco_bairro || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, endereco_bairro: e.target.value }))}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Cidade
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        value={formData.endereco_cidade || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, endereco_cidade: e.target.value }))}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Estado
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        value={formData.endereco_estado || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, endereco_estado: e.target.value }))}
+                        maxLength={2}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        CEP
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        value={formData.endereco_cep || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, endereco_cep: e.target.value }))}
+                        placeholder="00000-000"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Seção de Contato */}
+                <div className="border-t pt-6">
+                  <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Contato</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Telefone Celular *
+                      </label>
+                      <input
+                        type="tel"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        value={formData.telefone_celular || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, telefone_celular: e.target.value }))}
+                        placeholder="(11) 99999-9999"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Telefone Fixo
+                      </label>
+                      <input
+                        type="tel"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        value={formData.telefone_fixo || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, telefone_fixo: e.target.value }))}
+                        placeholder="(11) 3333-3333"
+                      />
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Email Pessoal
+                      </label>
+                      <input
+                        type="email"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        value={formData.email_pessoal || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, email_pessoal: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Tab Documentos */}
+            {activeTab === 'documentos' && (
+              <div className="space-y-6">
+                {/* Tipo de Colaborador */}
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Tipo de Colaborador *
+                  </label>
+                  <select
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    value={formData.tipo_colaborador || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, tipo_colaborador: e.target.value as any }))}
+                    required
+                  >
+                    <option value="">Selecione o tipo</option>
+                    <option value="clt">CLT</option>
+                    <option value="pj">PJ (Pessoa Jurídica)</option>
+                  </select>
+                </div>
+
+                {/* Documentos Básicos CLT */}
+                {formData.tipo_colaborador === 'clt' && (
+                  <div className="border border-blue-200 rounded-lg p-6 bg-blue-50 dark:bg-blue-900/20">
+                    <h4 className="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-4">
+                      Dados CLT
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          CTPS Número *
+                        </label>
+                        <input
+                          type="text"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                          value={formData.ctps_numero || ''}
+                          onChange={(e) => setFormData(prev => ({ ...prev, ctps_numero: e.target.value }))}
+                          required={formData.tipo_colaborador === 'clt'}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          PIS/PASEP *
+                        </label>
+                        <input
+                          type="text"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                          value={formData.pis_pasep || ''}
+                          onChange={(e) => setFormData(prev => ({ ...prev, pis_pasep: e.target.value }))}
+                          required={formData.tipo_colaborador === 'clt'}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Documentos Básicos PJ */}
+                {formData.tipo_colaborador === 'pj' && (
+                  <div className="border border-green-200 rounded-lg p-6 bg-green-50 dark:bg-green-900/20">
+                    <h4 className="text-lg font-semibold text-green-900 dark:text-green-100 mb-4">
+                      Dados PJ
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          CNPJ *
+                        </label>
+                        <input
+                          type="text"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                          value={formData.cnpj || ''}
+                          onChange={(e) => setFormData(prev => ({ ...prev, cnpj: e.target.value }))}
+                          placeholder="00.000.000/0000-00"
+                          required={formData.tipo_colaborador === 'pj'}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Razão Social *
+                        </label>
+                        <input
+                          type="text"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                          value={formData.razao_social || ''}
+                          onChange={(e) => setFormData(prev => ({ ...prev, razao_social: e.target.value }))}
+                          required={formData.tipo_colaborador === 'pj'}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Integração do Gerenciador de Documentos */}
+                {colaboradorId && formData.tipo_colaborador && formData.nome_completo && (
+                  <DocumentosManager
+                    colaboradorId={colaboradorId}
+                    nomeColaborador={formData.nome_completo}
+                    tipoColaborador={formData.tipo_colaborador as 'clt' | 'pj'}
+                    unidadeNome={unidades.find(u => u.id === formData.unidade_id)?.nome || 'Unidade'}
+                    onDocumentosChange={() => {
+                      // Callback para atualizar dados se necessário
+                      console.log('Documentos atualizados');
+                    }}
+                  />
+                )}
+
+                {/* Aviso para novos colaboradores */}
+                {!colaboradorId && (
+                  <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 rounded-lg p-4">
+                    <div className="flex items-center">
+                      <FileText className="w-5 h-5 text-yellow-600 mr-2" />
+                      <p className="text-yellow-800 dark:text-yellow-200">
+                        O gerenciamento de documentos estará disponível após salvar o colaborador.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Tab Dados Profissionais */}
+            {activeTab === 'profissional' && (
+              <div className="space-y-6">
+                {/* Informações Básicas do Cargo */}
+                <div className="border border-purple-200 rounded-lg p-6 bg-purple-50 dark:bg-purple-900/20">
+                  <h4 className="text-lg font-semibold text-purple-900 dark:text-purple-100 mb-4">
+                    Informações do Cargo
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          CTPS Número *
+                        </label>
+                        <input
+                          type="text"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                          value={formData.ctps_numero || ''}
+                          onChange={(e) => setFormData(prev => ({ ...prev, ctps_numero: e.target.value }))}
+                          required={formData.tipo_colaborador === 'clt'}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          CTPS Série
+                        </label>
+                        <input
+                          type="text"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                          value={formData.ctps_serie || ''}
+                          onChange={(e) => setFormData(prev => ({ ...prev, ctps_serie: e.target.value }))}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          CTPS UF
+                        </label>
+                        <input
+                          type="text"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                          value={formData.ctps_uf || ''}
+                          onChange={(e) => setFormData(prev => ({ ...prev, ctps_uf: e.target.value }))}
+                          maxLength={2}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Data de Emissão CTPS
+                        </label>
+                        <input
+                          type="date"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                          value={formData.ctps_data_emissao || ''}
+                          onChange={(e) => setFormData(prev => ({ ...prev, ctps_data_emissao: e.target.value }))}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          PIS/PASEP *
+                        </label>
+                        <input
+                          type="text"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                          value={formData.pis_pasep || ''}
+                          onChange={(e) => setFormData(prev => ({ ...prev, pis_pasep: e.target.value }))}
+                          required={formData.tipo_colaborador === 'clt'}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Data de Cadastro PIS
+                        </label>
+                        <input
+                          type="date"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                          value={formData.pis_data_cadastro || ''}
+                          onChange={(e) => setFormData(prev => ({ ...prev, pis_data_cadastro: e.target.value }))}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Certificado Reservista
+                        </label>
+                        <input
+                          type="text"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                          value={formData.certificado_reservista || ''}
+                          onChange={(e) => setFormData(prev => ({ ...prev, certificado_reservista: e.target.value }))}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          ASO (Atestado de Saúde Ocupacional)
+                        </label>
+                        <select
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                          value={formData.aso_status || ''}
+                          onChange={(e) => setFormData(prev => ({ ...prev, aso_status: e.target.value as any }))}
+                        >
+                          <option value="">Selecione</option>
+                          <option value="apto">Apto</option>
+                          <option value="apto_com_restricoes">Apto com Restrições</option>
+                          <option value="inapto">Inapto</option>
+                          <option value="pendente">Pendente</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Data do ASO
+                        </label>
+                        <input
+                          type="date"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                          value={formData.aso_data || ''}
+                          onChange={(e) => setFormData(prev => ({ ...prev, aso_data: e.target.value }))}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Validade do ASO
+                        </label>
+                        <input
+                          type="date"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                          value={formData.aso_validade || ''}
+                          onChange={(e) => setFormData(prev => ({ ...prev, aso_validade: e.target.value }))}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Médico Responsável ASO
+                        </label>
+                        <input
+                          type="text"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                          value={formData.aso_medico || ''}
+                          onChange={(e) => setFormData(prev => ({ ...prev, aso_medico: e.target.value }))}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Documentos PJ */}
+                {formData.tipo_colaborador === 'pj' && (
+                  <div className="border border-green-200 rounded-lg p-6 bg-green-50 dark:bg-green-900/20">
+                    <h4 className="text-lg font-semibold text-green-900 dark:text-green-100 mb-4">
+                      Documentos PJ
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          CNPJ *
+                        </label>
+                        <input
+                          type="text"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                          value={formData.cnpj || ''}
+                          onChange={(e) => setFormData(prev => ({ ...prev, cnpj: e.target.value }))}
+                          placeholder="00.000.000/0000-00"
+                          required={formData.tipo_colaborador === 'pj'}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Razão Social *
+                        </label>
+                        <input
+                          type="text"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                          value={formData.razao_social || ''}
+                          onChange={(e) => setFormData(prev => ({ ...prev, razao_social: e.target.value }))}
+                          required={formData.tipo_colaborador === 'pj'}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Nome Fantasia
+                        </label>
+                        <input
+                          type="text"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                          value={formData.nome_fantasia || ''}
+                          onChange={(e) => setFormData(prev => ({ ...prev, nome_fantasia: e.target.value }))}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Inscrição Estadual
+                        </label>
+                        <input
+                          type="text"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                          value={formData.inscricao_estadual || ''}
+                          onChange={(e) => setFormData(prev => ({ ...prev, inscricao_estadual: e.target.value }))}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Inscrição Municipal
+                        </label>
+                        <input
+                          type="text"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                          value={formData.inscricao_municipal || ''}
+                          onChange={(e) => setFormData(prev => ({ ...prev, inscricao_municipal: e.target.value }))}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Data Abertura Empresa
+                        </label>
+                        <input
+                          type="date"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                          value={formData.data_abertura_empresa || ''}
+                          onChange={(e) => setFormData(prev => ({ ...prev, data_abertura_empresa: e.target.value }))}
+                        />
+                      </div>
+
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Atividade Principal
+                        </label>
+                        <textarea
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                          value={formData.atividade_principal || ''}
+                          onChange={(e) => setFormData(prev => ({ ...prev, atividade_principal: e.target.value }))}
+                          rows={3}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Contrato Social
+                        </label>
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            id="contratoSocial"
+                            checked={formData.contrato_social_anexado || false}
+                            onChange={(e) => setFormData(prev => ({ ...prev, contrato_social_anexado: e.target.checked }))}
+                            className="rounded focus:ring-2 focus:ring-blue-500"
+                          />
+                          <label htmlFor="contratoSocial" className="text-sm text-gray-700 dark:text-gray-300">
+                            Contrato social anexado
+                          </label>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Certificações
+                        </label>
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            id="certificacoes"
+                            checked={formData.certificacoes_anexadas || false}
+                            onChange={(e) => setFormData(prev => ({ ...prev, certificacoes_anexadas: e.target.checked }))}
+                            className="rounded focus:ring-2 focus:ring-blue-500"
+                          />
+                          <label htmlFor="certificacoes" className="text-sm text-gray-700 dark:text-gray-300">
+                            Certificações anexadas
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Documentos Gerais */}
+                <div className="border border-gray-200 rounded-lg p-6">
+                  <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                    Outros Documentos
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Certidão de Nascimento/Casamento
+                      </label>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id="certidao"
+                          checked={formData.certidao_anexada || false}
+                          onChange={(e) => setFormData(prev => ({ ...prev, certidao_anexada: e.target.checked }))}
+                          className="rounded focus:ring-2 focus:ring-blue-500"
+                        />
+                        <label htmlFor="certidao" className="text-sm text-gray-700 dark:text-gray-300">
+                          Documento anexado
+                        </label>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Comprovante de Residência
+                      </label>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id="comprovanteResidencia"
+                          checked={formData.comprovante_residencia_anexado || false}
+                          onChange={(e) => setFormData(prev => ({ ...prev, comprovante_residencia_anexado: e.target.checked }))}
+                          className="rounded focus:ring-2 focus:ring-blue-500"
+                        />
+                        <label htmlFor="comprovanteResidencia" className="text-sm text-gray-700 dark:text-gray-300">
+                          Documento anexado
+                        </label>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Foto 3x4
+                      </label>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id="foto3x4"
+                          checked={formData.foto_3x4_anexada || false}
+                          onChange={(e) => setFormData(prev => ({ ...prev, foto_3x4_anexada: e.target.checked }))}
+                          className="rounded focus:ring-2 focus:ring-blue-500"
+                        />
+                        <label htmlFor="foto3x4" className="text-sm text-gray-700 dark:text-gray-300">
+                          Foto anexada
+                        </label>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Diploma/Certificados
+                      </label>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id="diploma"
+                          checked={formData.diploma_anexado || false}
+                          onChange={(e) => setFormData(prev => ({ ...prev, diploma_anexado: e.target.checked }))}
+                          className="rounded focus:ring-2 focus:ring-blue-500"
+                        />
+                        <label htmlFor="diploma" className="text-sm text-gray-700 dark:text-gray-300">
+                          Documentos anexados
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Tab Dados Profissionais */}
+            {activeTab === 'profissional' && (
+              <div className="space-y-6">
+                {/* Informações Básicas do Cargo */}
+                <div className="border border-purple-200 rounded-lg p-6 bg-purple-50 dark:bg-purple-900/20">
+                  <h4 className="text-lg font-semibold text-purple-900 dark:text-purple-100 mb-4">
+                    Informações do Cargo
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Cargo *
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        value={formData.cargo || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, cargo: e.target.value }))}
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        CBO (Código Brasileiro de Ocupações)
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        value={formData.cbo || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, cbo: e.target.value }))}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Unidade/Departamento *
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        value={formData.departamento || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, departamento: e.target.value }))}
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Centro de Custo
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        value={formData.centro_custo || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, centro_custo: e.target.value }))}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Tipo de Colaborador *
+                      </label>
+                      <select
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        value={formData.tipo_colaborador || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, tipo_colaborador: e.target.value as any }))}
+                        required
+                      >
+                        <option value="">Selecione o tipo</option>
+                        <option value="clt">CLT</option>
+                        <option value="pj">PJ (Pessoa Jurídica)</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Status *
+                      </label>
+                      <select
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        value={formData.status || 'ativo'}
+                        onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value as any }))}
+                      >
+                        <option value="ativo">Ativo</option>
+                        <option value="inativo">Inativo</option>
+                        <option value="afastado">Afastado</option>
+                        <option value="demitido">Demitido</option>
+                        <option value="aposentado">Aposentado</option>
+                        <option value="licenca">Licença</option>
+                        <option value="ferias">Férias</option>
+                        <option value="experiencia">Experiência</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Datas e Prazos */}
+                <div className="border border-orange-200 rounded-lg p-6 bg-orange-50 dark:bg-orange-900/20">
+                  <h4 className="text-lg font-semibold text-orange-900 dark:text-orange-100 mb-4">
+                    Datas e Prazos
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Data de Admissão *
+                      </label>
+                      <input
+                        type="date"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        value={formData.data_admissao || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, data_admissao: e.target.value }))}
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Data de Demissão
+                      </label>
+                      <input
+                        type="date"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        value={formData.data_demissao || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, data_demissao: e.target.value }))}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Motivo da Demissão
+                      </label>
+                      <select
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        value={formData.motivo_demissao || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, motivo_demissao: e.target.value as any }))}
+                      >
+                        <option value="">Selecione</option>
+                        <option value="pedido_demissao">Pedido de Demissão</option>
+                        <option value="dispensa_sem_justa_causa">Dispensa sem Justa Causa</option>
+                        <option value="dispensa_justa_causa">Dispensa por Justa Causa</option>
+                        <option value="fim_contrato">Fim de Contrato</option>
+                        <option value="aposentadoria">Aposentadoria</option>
+                        <option value="falecimento">Falecimento</option>
+                        <option value="outros">Outros</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Período de Experiência (dias)
+                      </label>
+                      <input
+                        type="number"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        value={formData.periodo_experiencia || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, periodo_experiencia: parseInt(e.target.value) || null }))}
+                        placeholder="Ex: 90"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Carga Horária Semanal
+                      </label>
+                      <input
+                        type="number"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        value={formData.carga_horaria_semanal || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, carga_horaria_semanal: parseInt(e.target.value) || null }))}
+                        placeholder="Ex: 40"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Escala de Trabalho
+                      </label>
+                      <select
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        value={formData.escala_trabalho || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, escala_trabalho: e.target.value as any }))}
+                      >
+                        <option value="">Selecione</option>
+                        <option value="segunda_sexta">Segunda a Sexta</option>
+                        <option value="escala_12x36">12x36</option>
+                        <option value="escala_6x1">6x1</option>
+                        <option value="plantao">Plantão</option>
+                        <option value="revezamento">Revezamento</option>
+                        <option value="outros">Outros</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Informações Salariais */}
+                <div className="border border-green-200 rounded-lg p-6 bg-green-50 dark:bg-green-900/20">
+                  <h4 className="text-lg font-semibold text-green-900 dark:text-green-100 mb-4">
+                    Informações Salariais
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Salário Base *
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        value={formData.salario_base || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, salario_base: parseFloat(e.target.value) || null }))}
+                        placeholder="0,00"
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Insalubridade (%)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        value={formData.insalubridade || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, insalubridade: parseFloat(e.target.value) || null }))}
+                        placeholder="0,00"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Periculosidade (%)
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        value={formData.periculosidade || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, periculosidade: parseFloat(e.target.value) || null }))}
+                        placeholder="0,00"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Vale Transporte
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        value={formData.vale_transporte_valor || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, vale_transporte_valor: parseFloat(e.target.value) || null }))}
+                        placeholder="0,00"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Vale Refeição
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        value={formData.vale_refeicao || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, vale_refeicao: parseFloat(e.target.value) || null }))}
+                        placeholder="0,00"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Vale Alimentação
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        value={formData.vale_alimentacao_valor || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, vale_alimentacao_valor: parseFloat(e.target.value) || null }))}
+                        placeholder="0,00"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Plano de Saúde
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        value={formData.plano_saude || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, plano_saude: parseFloat(e.target.value) || null }))}
+                        placeholder="0,00"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Plano Odontológico
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        value={formData.plano_odontologico || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, plano_odontologico: parseFloat(e.target.value) || null }))}
+                        placeholder="0,00"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Seguro de Vida
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        value={formData.seguro_vida || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, seguro_vida: parseFloat(e.target.value) || null }))}
+                        placeholder="0,00"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Informações Bancárias */}
+                <div className="border border-blue-200 rounded-lg p-6 bg-blue-50 dark:bg-blue-900/20">
+                  <h4 className="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-4">
+                    Informações Bancárias
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Banco
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        value={formData.banco_nome || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, banco_nome: e.target.value }))}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Código do Banco
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        value={formData.banco_codigo || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, banco_codigo: e.target.value }))}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Agência
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        value={formData.banco_agencia || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, banco_agencia: e.target.value }))}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Dígito da Agência
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        value={formData.banco_agencia_digito || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, banco_agencia_digito: e.target.value }))}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Conta
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        value={formData.banco_conta || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, banco_conta: e.target.value }))}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Dígito da Conta
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        value={formData.banco_conta_digito || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, banco_conta_digito: e.target.value }))}
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Tipo de Conta
+                      </label>
+                      <select
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        value={formData.banco_tipo_conta || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, banco_tipo_conta: e.target.value as any }))}
+                      >
+                        <option value="">Selecione</option>
+                        <option value="corrente">Conta Corrente</option>
+                        <option value="poupanca">Conta Poupança</option>
+                        <option value="salario">Conta Salário</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        PIX (Chave)
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        value={formData.banco_pix || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, banco_pix: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Observações */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Observações
+                  </label>
+                  <textarea
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    rows={4}
+                    value={formData.observacoes || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, observacoes: e.target.value }))}
+                    placeholder="Informações adicionais sobre o colaborador..."
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Tab Dependentes */}
+            {activeTab === 'dependentes' && colaboradorId && (
+              <div className="space-y-6">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    Dependentes
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={adicionarDependente}
+                    className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Adicionar Dependente
+                  </button>
+                </div>
+
+                {dependentes.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    Nenhum dependente cadastrado
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {dependentes.map((dependente, index) => (
+                      <div key={dependente.id || index} className="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg">
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium mb-1">Nome Completo</label>
+                            <input
+                              type="text"
+                              className="w-full px-3 py-2 border rounded-lg"
+                              value={dependente.nome_completo}
+                              onChange={(e) => atualizarDependente(index, 'nome_completo', e.target.value)}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-1">Parentesco</label>
+                            <select
+                              className="w-full px-3 py-2 border rounded-lg"
+                              value={dependente.grau_parentesco}
+                              onChange={(e) => atualizarDependente(index, 'grau_parentesco', e.target.value)}
+                            >
+                              <option value="">Selecione</option>
+                              <option value="filho">Filho(a)</option>
+                              <option value="conjuge">Cônjuge</option>
+                              <option value="pai">Pai</option>
+                              <option value="mae">Mãe</option>
+                              <option value="irmao">Irmão(ã)</option>
+                              <option value="outro">Outro</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-1">Data de Nascimento</label>
+                            <input
+                              type="date"
+                              className="w-full px-3 py-2 border rounded-lg"
+                              value={dependente.data_nascimento}
+                              onChange={(e) => atualizarDependente(index, 'data_nascimento', e.target.value)}
+                            />
+                          </div>
+                          <div className="flex items-end">
+                            <button
+                              type="button"
+                              onClick={() => dependente.id && removerDependente(dependente.id)}
+                              className="p-2 text-red-600 hover:bg-red-100 rounded-lg"
+                              title="Remover"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Botões de Ação */}
+            <div className="flex gap-4 pt-6 border-t border-gray-200 dark:border-gray-700">
+              <button
+                type="button"
+                onClick={onCancel}
+                className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                disabled={loading}
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                disabled={loading}
+              >
+                {loading ? 'Salvando...' : (colaboradorId ? 'Atualizar' : 'Salvar')}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default ColaboradorForm;

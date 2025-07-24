@@ -1,0 +1,194 @@
+Orientações detalhadas Foncare System. - Parte 1
+
+Módulo Dashboard (Deve ficar dentro de um menu chamado relatórios)
+
+ - Na visão geral do sistema eu quero:
+
+Mapa de calor dos pacientes com top 5 Bairros onde tem mais pacientes.
+Gráfico de comparecimento em consultas.
+Taxa de conversão - (Paciente agendado - quantos conseguimos virar para terapias x quantos pacientes não retornaram)
+Gráfico com filtro por unidade e convênio - Para saber quantos pacientes passaram no mês por convênio, preciso de filtro de data e filtro de unidade e filtro de convênio, se precisar use Python.
+Valores referentes a financeiro da empresa.
+
+Módulo NAC 
+
+ - Cadastro de pacientes com as seguintes informações divididas em 3 partes, com as informações primordiais para , ao final anexo de documentação enviada pelo paciente, Pedido médico, Foto ou print da carteirinha do convênio, Foto do RG, Foto da criança.
+
+Estrutura da Table pacientes no supabase / dividir em 3 partes, para facilitar o processo de cadastro:
+
+Nome / Cpf / RG / Data de nascimento (Se menor de idade precisamos dos dados do responsável, caso contrário não é necessário) / Telefone / Email.
+Dados de endereço
+Dados convênio
+
+id - uuid
+nome - varchar
+cpf - varchar
+rg - varchar
+data_nascimento - date
+sexo - varchar
+telefone - varchar
+email - varchar
+convenio_id - uuid
+numero_carteirinha - varchar
+cep - varchar
+logradouro - varchar
+numero - varchar
+complemento - varchar
+bairro - varchar
+cidade - varchar
+uf - varchar
+responsavel_nome - varchar
+responsavel_telefone - varchar
+responsavel_parentesco - varchar
+profissao - varchar
+estado_civil - varchar
+observacoes - text
+ativo - bool
+created_at - timestamptz
+updated_at - timestamptz
+responsavel_cpf - varchar
+unidade_id
+validade_carteira - date
+
+Agendamentos: Deverá ficar no submenu do NAC.
+
+- Visualização de agenda com visão semanal e por lista.
+- Botão criar novo agendamento.
+- Estatísticas (Usar pyton) sobre os pacientes que foram agendados no mês, os que compareceram e os que não compareceram e será necessário reagendar.
+- Modalidades de agendamento: Anamnese - Sessão de 1 Hora na sala de Anamnese | Neuropsicologia - Agendamentos de 1 hora a sessão, com opção de preencher todas as sessões de uma vez, com base no mesmo dia e horário que foi agendada a primeira sessão. |A seguir temos as salas que possibilitam até 3 meses de agendamentos, sempre no mesmo dia e horário do primeiro:
+
+ Sala Azul (Fonoaudiologia) - Até 3 meses de agendamentos.
+ Sala Azul Claro (Terapia Ocupacional) - Até 3 meses de agendamentos.
+ Sala Verde (Psicologia) - Até 3 meses de agendamentos
+ Sala Vermelha (Psicopedagogia / Neuropsicopegagogia) - Até 3 meses de agendamentos.
+ Sala Laranja Escuro (Educador Físico) - Até 3 meses de agendamentos.
+ Sala Amarela (Psicomnotricidade) - Até 3 meses de agendamentos.
+ Sala Amarelo Claro (Musicoterapia) - Até 3 meses de agendamentos.
+ Sala Lilás (Fisioterapia) - Até 3 meses de agendamentos.
+
+
+ Sala Cinza (Anamnese) - Apenas 1 sessão de 1 hora.
+ Sala Preta (Avaliação Neuropsicológica) - agendamentos de 1 hora a sessão, 6 sessões com opção de preencher todas as sessões de uma vez, sempre no mesmo dia da semana e horário escolhido.
+
+Aqui segue o código das cores que serão utilizadas em sistema por cada especialidade onde o paciente for agendado, 
+
+#0052CC	FONOAUDIOLOGIA
+#00E6F6	TERAPIA OCUPACIONAL
+#38712F	PSICOLOGIA
+#D20000	PSICOPEDAGOGIA / NEUROPSICOPEDAGOGIA
+#B45A00	EDUCADOR FÍSICO
+#F58B00	PSICOMOTRICIDADE
+#F5C344	MUSICOTERAPIA / LUDOTERAPIA / ARTERAPIA
+#C47B9C	FISIOTERAPIA
+
+Estrutura da table salas: 
+
+Criar Schema para criação de table das salas de maneira correta, 10 salas por unidade / Com capacidade de até 6 Crianças por sala / Alocação de até 2 profissionais por sala: 1 Profissional e um Sub.
+
+
+Estrutura da Table "agendamentos", onde teremos os registros de agendamentos que serão utilizados por outras áreas:
+
+id - uuid
+paciente_id - uuid
+convenio_id - uuid
+data_agendamento - date
+status - varchar
+observacoes - text
+created_at - timestamptz
+updated_at - timestamptz
+numero_agendamento - varchar
+profissional_id - uuid
+unidade_id - uuid
+sala_id
+horario_inicio - time
+horario_fim - time
+duracao_minutos - int4
+tipo_sessao - varchar
+modalidade - varchar
+status_confirmacao - varchar
+valor_sessao - numeric
+codigo_autorizacao - varchar
+numero_guia - varchar
+data_autorizacao - date
+validade_autorizacao - date
+is_neuropsicologia - bool
+sessao_sequencia - int4
+total_sessoes - int4
+agendamento_pai_id - uuid
+lembrete_enviado - bool
+confirmacao_enviada - bool
+data_lembrete - timestamptz
+data_confirmacao - timestamptz
+whatsapp_paciente - varchar
+whatsapp_resposavel - varchar
+observacoes_internas - text
+motivo_cancelamento - Text
+data_chegada - timestamptz
+data_inicio_atendimento - timestamptz.
+data_fim_atendimento - timestamptz.
+documentos_necessarios - jsonb
+documentos_entregues - jsonb
+created_by - uuid
+updated_by - uuid
+
+Nem todos os campos são preenchidos dentro da visao de agendamentos no sistema, isto veremos no próximo módulo:
+
+Módulo Recepção
+
+- Este módulo tem 2 sub menus, o primeiro se chama sala de espera, e a sua função é mostrar os agendamentos do dia, sempre que o paciente chegar, o usuário clica no botão: Confirmar chegada (na table agendamentos preenche: data_chegada - timestamptz)
+- Quando o usuário confirma a chegada do paciente, um botão fica piscando em vermelho chamado (Tabular Guia) - Ao clicar neste botão, deverá abrir um modal com preenchimento de algumas informações primodiais para liberar o paciente para a terapia, mas antes, é preciso entender que as informações trafegam junto com o paciente, então, o convênio dele deve entrar conforme a table convenios, igual já está configurado, com acrescimo das seguintes informações:
+
+convenio_id - uuid - Já vem preenchido pelo cadastro do paciente.
+codigo_autorizacao - varchar - Puxa da table chamada: procedimentos_tuss.dados_lista_suspensa conforme o convênio do paciente já preenchido.
+numero_guia - varchar - Preenchimento em campo numérico.
+data_autorizacao - date - Data de autorização da guia.
+validade_autorizacao - date - Data de vencimento da guia.
+
+
+Essas informações entram automáticamente na table agendamentos ao serem preenchidas, e são primordiais para que o paciente possa ir para a terapia, caso não for realizado o preenchimento, o paciente não vai para a sessão.
+
+O terceiro botão dentro desse card que mostra o agendamento do paciente naquela data / horário, deverá contemplar também Profissional/Sub que estão vinculados a sala, exixte uma table já criada no supabase e a informação que coletaremos é da table: profissionais.nome, inclusive, vou já te mandar a estrutura da table profissionais para facilitar o processo:
+
+id - uuid
+usuario_id
+nome - varchar
+cpf - varchar
+rg - varchar
+crf - varchar
+especialidade_id - uuid
+telefone - varchar
+email - varchar
+cep - varchar
+logradouro - varchar
+numero - varchar
+complemento - varchar
+bairro - varchar
+cidade - varchar
+uf - varchar
+tipo_contrato - varchar
+valor_hora - varchar
+carga_horaria_semanal - int4
+data_admissao - date
+data_demissao - date
+ativo - bool
+observacoes - text
+created_at - timestamptz
+updated_at - timestamptz
+
+Aqui precisamos também de sala_id que não está criado pois isso vai compor a contratação de PJ para a empresa, e que será alocado nas salas.
+
+- O segundo submenu da recepção diz respeito ao cronograma do paciente, quero com geração de PDF o registro dos dias da semana e horários que o paciente vai passar em cada especialidade, isso deve ser pós agendamento.
+
+
+Quando esta etapa estiver funcional, passaremos aos próximos módulos.
+
+
+
+
+
+
+
+
+
+
+
