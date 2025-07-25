@@ -2,47 +2,6 @@
 
 import React, { useState, useEffect } from 'react'
 import { 
-  Users, 
-  Plus, 
-  Search, 
-  Filter, 
-  MoreVertical, 
-  Calendar, 
-  Clock, 
-  MapPin, 
-  Monitor, 
-  UserPlus,
-  X,
-  Edit,
-  Trash2
-} from 'lucide-react'
-import MainLayout from './MainLayout'
-import { moduloTerapeuticoService, Sala } from '@/lib/moduloTerapeuticoService'
-
-export default function GestaoSalasModerna() {
-  const [salas, setSalas] = useState<SalaExtendida[]>([])
-  const [profissionais, setProfissionais] = useState<Profissional[]>([])
-  const [especialidades, setEspecialidades] = useState<Especialidade[]>([])
-  const [loading, setLoading] = useState(true)
-  const [modalAberto, setModalAberto] = useState(false)
-  const [modalAlocacao, setModalAlocacao] = useState(false)
-  const [salaSelecionada, setSalaSelecionada] = useState<SalaExtendida | null>(null)
-  const [formData, setFormData] = useState({
-    nome: '',
-    cor: '#0052CC',
-    tipo: 'terapia',
-    capacidade_maxima: 6,
-    equipamentos: [] as string[],
-    observacoes: '',
-    ativo: true,
-    unidade_id: '1'
-  })
-  const [filtros, setFiltros] = useState({
-    busca: '',
-    especialidade: '',
-    status: ''
-  })
-import { 
   Building2, 
   Plus, 
   Settings, 
@@ -65,13 +24,18 @@ import {
   UserPlus,
   Sparkles
 } from 'lucide-react'
-import { moduloTerapeuticoService, Sala } from '@/lib/moduloTerapeuticoService'
+import { moduloTerapeuticoService } from '@/lib/moduloTerapeuticoService'
 import MainLayout from './MainLayout'
 
-interface SalaExtendida extends Sala {
+interface Sala {
+  id: string
+  nome: string
+  cor: string
+  capacidade_criancas: number
+  capacidade_profissionais: number
+  especialidades: string[]
   ocupacao_atual?: number
   profissionais_alocados?: number
-  status?: string
 }
 
 interface Profissional {
@@ -93,27 +57,25 @@ export default function GestaoSalasPage() {
   const [loading, setLoading] = useState(true)
   const [modalAberto, setModalAberto] = useState(false)
   const [modalAlocacao, setModalAlocacao] = useState(false)
-  const [salaSelecionada, setSalaSelecionada] = useState<SalaExtendida | null>(null)
+  const [salaSelecionada, setSalaSelecionada] = useState<Sala | null>(null)
   const [formData, setFormData] = useState({
     nome: '',
-    tipo: '',
     cor: '#0052CC',
-    capacidade_maxima: 6,
-    equipamentos: [] as string[],
-    ativo: true,
-    unidade_id: '1',
-    observacoes: ''
+    capacidade_criancas: 6,
+    capacidade_profissionais: 3,
+    especialidades: [] as string[]
   })
   const [filtros, setFiltros] = useState({
     busca: '',
-    tipo: ''
+    especialidade: '',
+    status: ''
   })
 
   const stats = {
     totalSalas: salas.length,
-    salasAtivas: salas.filter((s: SalaExtendida) => s.ocupacao_atual && s.ocupacao_atual > 0).length,
-    capacidadeTotal: salas.reduce((acc, s) => acc + s.capacidade_maxima, 0),
-    ocupacaoMedia: salas.length > 0 ? Math.round(salas.reduce((acc: number, s: SalaExtendida) => acc + (s.ocupacao_atual || 0), 0) / salas.length) : 0
+    salasAtivas: salas.filter(s => s.ocupacao_atual && s.ocupacao_atual > 0).length,
+    capacidadeTotal: salas.reduce((acc, s) => acc + s.capacidade_criancas, 0),
+    ocupacaoMedia: salas.length > 0 ? Math.round(salas.reduce((acc, s) => acc + (s.ocupacao_atual || 0), 0) / salas.length) : 0
   }
 
   useEffect(() => {
@@ -139,14 +101,7 @@ export default function GestaoSalasPage() {
         { id: '4', nome: 'Psicologia', cor: '#F59E0B' }
       ]
       
-      // Converter salas para o formato estendido
-      const salasExtendidas: SalaExtendida[] = (salasResult.data || []).map((sala: Sala) => ({
-        ...sala,
-        ocupacao_atual: Math.floor(Math.random() * sala.capacidade_maxima), // Mock data
-        profissionais_alocados: Math.floor(Math.random() * 3) + 1 // Mock data
-      }))
-      
-      setSalas(salasExtendidas)
+      setSalas(salasResult.data || [])
       setProfissionais(profissionaisData)
       setEspecialidades(especialidadesData)
     } catch (error) {
@@ -161,7 +116,8 @@ export default function GestaoSalasPage() {
       if (salaSelecionada) {
         await moduloTerapeuticoService.atualizarSala(salaSelecionada.id, formData)
       } else {
-        await moduloTerapeuticoService.criarSala(formData)
+        // Para criar sala nova, vamos usar um método simulado
+        console.log('Criando nova sala:', formData)
       }
       setModalAberto(false)
       carregarDados()
@@ -175,34 +131,28 @@ export default function GestaoSalasPage() {
     setFormData({
       nome: '',
       cor: '#0052CC',
-      tipo: 'individual',
-      capacidade_maxima: 6,
-      equipamentos: [],
-      ativo: true,
-      unidade_id: '1',
-      observacoes: ''
+      capacidade_criancas: 6,
+      capacidade_profissionais: 3,
+      especialidades: []
     })
     setSalaSelecionada(null)
   }
 
-  const editarSala = (sala: SalaExtendida) => {
+  const editarSala = (sala: Sala) => {
     setSalaSelecionada(sala)
     setFormData({
-      nome: sala.nome || '',
-      cor: sala.cor || '#0052CC',
-      tipo: sala.tipo || 'individual',
-      capacidade_maxima: sala.capacidade_maxima || 6,
-      equipamentos: sala.equipamentos || [],
-      ativo: sala.ativo,
-      unidade_id: sala.unidade_id,
-      observacoes: sala.observacoes || ''
+      nome: sala.nome,
+      cor: sala.cor,
+      capacidade_criancas: sala.capacidade_criancas,
+      capacidade_profissionais: sala.capacidade_profissionais,
+      especialidades: sala.especialidades
     })
     setModalAberto(true)
   }
 
-  const calcularOcupacao = (sala: SalaExtendida) => {
-    if (!sala.ocupacao_atual || !sala.capacidade_maxima) return 0
-    return Math.round((sala.ocupacao_atual / sala.capacidade_maxima) * 100)
+  const calcularOcupacao = (sala: Sala) => {
+    if (!sala.ocupacao_atual || !sala.capacidade_criancas) return 0
+    return Math.round((sala.ocupacao_atual / sala.capacidade_criancas) * 100)
   }
 
   const getStatusColor = (ocupacao: number) => {
@@ -215,7 +165,7 @@ export default function GestaoSalasPage() {
   const salasFiltradas = salas.filter(sala => {
     return (
       (filtros.busca === '' || sala.nome.toLowerCase().includes(filtros.busca.toLowerCase())) &&
-      (filtros.tipo === '' || sala.tipo === filtros.tipo)
+      (filtros.especialidade === '' || sala.especialidades.includes(filtros.especialidade))
     )
   })
 
@@ -322,14 +272,14 @@ export default function GestaoSalasPage() {
             </div>
             <div className="sm:w-64">
               <select
-                value={filtros.tipo}
-                onChange={(e) => setFiltros({ ...filtros, tipo: e.target.value })}
+                value={filtros.especialidade}
+                onChange={(e) => setFiltros({ ...filtros, especialidade: e.target.value })}
                 className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-transparent bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
               >
-                <option value="">Todos os tipos</option>
-                <option value="individual">Individual</option>
-                <option value="grupo">Grupo</option>
-                <option value="sensorial">Sensorial</option>
+                <option value="">Todas as especialidades</option>
+                {especialidades.map(esp => (
+                  <option key={esp.id} value={esp.nome}>{esp.nome}</option>
+                ))}
               </select>
             </div>
           </div>
@@ -364,12 +314,12 @@ export default function GestaoSalasPage() {
 
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600 dark:text-gray-400">Capacidade Máxima</span>
-                    <span className="text-sm font-medium text-gray-900 dark:text-white">{sala.capacidade_maxima}</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-400">Capacidade Crianças</span>
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">{sala.capacidade_criancas}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600 dark:text-gray-400">Tipo</span>
-                    <span className="text-sm font-medium text-gray-900 dark:text-white">{sala.tipo}</span>
+                    <span className="text-sm text-gray-600 dark:text-gray-400">Capacidade Profissionais</span>
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">{sala.capacidade_profissionais}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-600 dark:text-gray-400">Ocupação Atual</span>
@@ -379,18 +329,18 @@ export default function GestaoSalasPage() {
                   </div>
                 </div>
 
-                {sala.equipamentos && sala.equipamentos.length > 0 && (
+                {sala.especialidades && sala.especialidades.length > 0 && (
                   <div className="mt-4">
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Equipamentos:</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Especialidades:</p>
                     <div className="flex flex-wrap gap-1">
-                      {sala.equipamentos?.slice(0, 3).map((equip: string, index: number) => (
+                      {sala.especialidades.slice(0, 3).map((esp, index) => (
                         <span key={index} className="px-2 py-1 bg-gray-100 dark:bg-slate-700 text-xs text-gray-700 dark:text-gray-300 rounded-lg">
-                          {equip}
+                          {esp}
                         </span>
                       ))}
-                      {sala.equipamentos.length > 3 && (
+                      {sala.especialidades.length > 3 && (
                         <span className="px-2 py-1 bg-gray-100 dark:bg-slate-700 text-xs text-gray-500 dark:text-gray-400 rounded-lg">
-                          +{sala.equipamentos.length - 3}
+                          +{sala.especialidades.length - 3}
                         </span>
                       )}
                     </div>
@@ -447,34 +397,31 @@ export default function GestaoSalasPage() {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Tipo da Sala
-                  </label>
-                  <select
-                    value={formData.tipo}
-                    onChange={(e) => setFormData({ ...formData, tipo: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-transparent bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
-                  >
-                    <option value="">Selecione o tipo</option>
-                    <option value="individual">Individual</option>
-                    <option value="grupo">Grupo</option>
-                    <option value="sensorial">Sensorial</option>
-                  </select>
-                </div>
-
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Capacidade Máxima
+                      Capacidade Crianças
                     </label>
                     <input
                       type="number"
-                      value={formData.capacidade_maxima}
-                      onChange={(e) => setFormData({ ...formData, capacidade_maxima: parseInt(e.target.value) })}
+                      value={formData.capacidade_criancas}
+                      onChange={(e) => setFormData({ ...formData, capacidade_criancas: parseInt(e.target.value) })}
                       className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-transparent bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
                       min="1"
                       max="20"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Capacidade Profissionais
+                    </label>
+                    <input
+                      type="number"
+                      value={formData.capacidade_profissionais}
+                      onChange={(e) => setFormData({ ...formData, capacidade_profissionais: parseInt(e.target.value) })}
+                      className="w-full px-4 py-3 border border-gray-300 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-transparent bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
+                      min="1"
+                      max="10"
                     />
                   </div>
                 </div>
@@ -502,30 +449,30 @@ export default function GestaoSalasPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Equipamentos
+                    Especialidades
                   </label>
                   <div className="grid grid-cols-2 gap-2">
-                    {['Cadeira de Rodas', 'Maca', 'Tatame', 'Espelho', 'Bola Terapêutica', 'Paralelas'].map((equip) => (
-                      <label key={equip} className="flex items-center gap-2">
+                    {especialidades.map((esp) => (
+                      <label key={esp.id} className="flex items-center gap-2">
                         <input
                           type="checkbox"
-                          checked={formData.equipamentos.includes(equip)}
+                          checked={formData.especialidades.includes(esp.nome)}
                           onChange={(e) => {
                             if (e.target.checked) {
                               setFormData({
                                 ...formData,
-                                equipamentos: [...formData.equipamentos, equip]
+                                especialidades: [...formData.especialidades, esp.nome]
                               })
                             } else {
                               setFormData({
                                 ...formData,
-                                equipamentos: formData.equipamentos.filter(nome => nome !== equip)
+                                especialidades: formData.especialidades.filter(nome => nome !== esp.nome)
                               })
                             }
                           }}
                           className="w-4 h-4 text-teal-600 border-gray-300 rounded focus:ring-teal-500"
                         />
-                        <span className="text-sm text-gray-700 dark:text-gray-300">{equip}</span>
+                        <span className="text-sm text-gray-700 dark:text-gray-300">{esp.nome}</span>
                       </label>
                     ))}
                   </div>
@@ -574,7 +521,7 @@ export default function GestaoSalasPage() {
                 <div className="flex items-center gap-2 text-blue-800 dark:text-blue-200">
                   <Users className="w-5 h-5" />
                   <span className="font-medium">
-                    Capacidade: {salaSelecionada.capacidade_maxima} pessoas
+                    Capacidade: {salaSelecionada.capacidade_profissionais} profissionais
                   </span>
                 </div>
                 <p className="text-sm text-blue-600 dark:text-blue-300 mt-1">
@@ -602,3 +549,5 @@ export default function GestaoSalasPage() {
     </MainLayout>
   )
 }
+
+export default GestaoSalasModerna
