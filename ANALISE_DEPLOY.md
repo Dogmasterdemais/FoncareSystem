@@ -149,7 +149,14 @@ npm update @radix-ui/react-dropdown-menu
 
 ## 🚨 **PROBLEMAS CRÍTICOS CORRIGIDOS**
 
-### **1. ✅ Runtime Error - Client Component:**
+### **PROBLEMA PRINCIPAL - Deploy Vercel:**
+**🔴 VERCEL USANDO COMMIT DESATUALIZADO:**
+- Vercel está no commit: `e87124a` (ANTIGO - contém debug-env)
+- Repositório atual: `63862d0` (NOVO - sem debug-env)
+- **Causa**: Webhook do Vercel não sincronizou automaticamente
+- **Solução**: Commit vazio criado para forçar novo deploy
+
+### **HISTÓRICO DE CORREÇÕES:**
 ```typescript
 // ANTES (erro)
 export default async function TesteColaboradoresPJ() {
@@ -160,7 +167,7 @@ export default async function TesteColaboradoresPJ() {
 export default function TesteColaboradoresPJ() {
 ```
 
-### **2. ✅ Export/Import Error - SupervisaoTerapeuticaPage:**
+### **1. ✅ Runtime Error - Client Component:**
 ```typescript
 // ANTES (erro)
 export function SupervisaoTerapeuticaPage() {
@@ -169,12 +176,12 @@ export function SupervisaoTerapeuticaPage() {
 export default function SupervisaoTerapeuticaPage() {
 ```
 
-### **3. ✅ SQL Script - Colaboradores PJ:**
+### **2. ✅ Export/Import Error - SupervisaoTerapeuticaPage:**
 - Script de 80 profissionais PJ corrigido
 - Sintaxe SQL válida
 - Valores por hora configurados
 
-### **4. ✅ ESLint Warnings - Todos Corrigidos:**
+### **3. ✅ SQL Script - Colaboradores PJ:**
 ```typescript
 // ANTES (warnings)
 dados: any[]
@@ -187,12 +194,12 @@ filtros: Record<string, unknown> = {}
 const { error } = ... // variável desnecessária removida
 ```
 
-### **5. ✅ Configuração ESLint Otimizada:**
+### **4. ✅ ESLint Warnings - Todos Corrigidos:**
 - `.eslintrc.json` criado com regras específicas
 - Overrides para arquivos JS e scripts
 - Warnings informativos sem bloquear build
 
-### **6. ✅ Erro de Compilação TypeScript - AgendaTerapeuticaPage:**
+### **5. ✅ Configuração ESLint Otimizada:**
 ```typescript
 // ANTES (erro de compilação)
 import { moduloTerapeuticoService, AgendamentoTerapeutico } from '@/lib/moduloTerapeuticoService';
@@ -201,12 +208,12 @@ import { moduloTerapeuticoService, AgendamentoTerapeutico } from '@/lib/moduloTe
 import { Calendar, Plus, Clock, User, MapPin, Activity, Edit, Trash2, Save, X, Timer } from 'lucide-react';
 ```
 
-### **7. ✅ Arquivos com Problemas de Encoding:**
+### **6. ✅ Erro de Compilação TypeScript - AgendaTerapeuticaPage:**
 - `debug-env/page.tsx` - **REMOVIDO COMPLETAMENTE** (não essencial)
 - `GestaoSalasModerna.tsx` - Adicionado export default
 - `AgendaTerapeuticaPage.tsx` - Removido import inexistente
 
-### **8. ✅ Deploy Forçado - Correção Final:**
+### **7. ✅ Arquivos com Problemas de Encoding:**
 ```bash
 # Commits finais:
 # a03bb8a - remove debug-env completamente para resolver erro de build
@@ -246,14 +253,16 @@ import { Calendar, Plus, Clock, User, MapPin, Activity, Edit, Trash2, Save, X, T
 
 ### **Status do Deploy Vercel:**
 ```bash
-# Deploy realizado em: 25/07/2025 19:08
-# Commits enviados:
-# a03bb8a - FINAL: remove debug-env completamente
-# de78e10 - força novo deploy após webhook falha  
-# 88bc672 - corrigir AgendaTerapeuticaPage para resolver erro de compilação
+# PROBLEMA IDENTIFICADO: Vercel usando commit ANTIGO
+# Commit do Vercel: e87124a (DESATUALIZADO - contém debug-env)
+# Commit atual: 63862d0 (ATUALIZADO - sem debug-env)
 
-# Status: ARQUIVO PROBLEMÁTICO REMOVIDO ✅
-# Aguardando: Novo deploy automático do Vercel
+# Solução aplicada:
+# cfed7d0 - docs: atualiza análise com remoção definitiva do debug-env
+# 63862d0 - trigger: força Vercel a usar commit cfed7d0 sem debug-env
+
+# Status: FORÇANDO NOVO DEPLOY ✅
+# Aguardando: Vercel sincronizar com commit 63862d0
 ```
 
 ### **Monitoramento Recomendado:**
