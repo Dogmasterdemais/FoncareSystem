@@ -1,5 +1,5 @@
 "use client";
-import { Bell, User, Search, Menu, Sidebar } from 'lucide-react';
+import { Bell, User, Menu, Sidebar } from 'lucide-react';
 import { useState } from 'react';
 import { DirectDarkToggle } from './DirectDarkToggle';
 
@@ -44,18 +44,6 @@ export default function Header({ onToggleSidebar, onToggleCollapse, sidebarColla
               <h1 className="font-bold text-xl text-slate-800 dark:text-slate-100">Foncare</h1>
               <p className="text-sm text-slate-600 dark:text-slate-400">Sistema de Gestão Clínica</p>
             </div>
-          </div>
-        </div>
-
-        {/* Busca global */}
-        <div className="flex-1 max-w-xl mx-8">
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 w-5 h-5" />
-            <input
-              type="text"
-              placeholder="Buscar pacientes, agendamentos..."
-              className="w-full pl-12 pr-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 shadow-sm transition-all"
-            />
           </div>
         </div>
 

@@ -109,11 +109,11 @@ export default function PacientesPage() {
 
   return (
     <MainLayout>
-      <div className="w-full max-w-full overflow-x-hidden bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+      <div className="space-y-6 w-full max-w-none">
         {/* Header moderno */}
-        <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-b border-blue-100 dark:border-blue-800/50 sticky top-0 z-20 shadow-lg">
-          <div className="px-4 md:px-6 py-4">
-            <div className="flex items-center justify-between mb-4">
+        <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-b border-blue-100 dark:border-blue-800/50 rounded-2xl shadow-lg">
+          <div className="px-8 py-6">
+            <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center text-white text-2xl">
                   👥
@@ -182,7 +182,7 @@ export default function PacientesPage() {
         </div>
 
         {/* Conteúdo principal */}
-        <div className="px-4 md:px-6 py-2 w-full max-w-full">{viewMode === 'grid' ? (
+        <div className="px-8 py-8">{viewMode === 'grid' ? (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6 animate-fade-in">
             {paginated.length === 0 ? (
               <div className="col-span-full">
@@ -258,13 +258,13 @@ export default function PacientesPage() {
               <table className="min-w-full">
                 <thead className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/50 dark:to-indigo-900/50 border-b border-blue-100 dark:border-blue-800/50">
                   <tr>
-                    <th className="px-3 lg:px-6 py-4 text-left text-xs font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider">Paciente</th>
-                    <th className="px-3 lg:px-6 py-4 text-left text-xs font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider hidden sm:table-cell">CPF</th>
-                    <th className="px-3 lg:px-6 py-4 text-left text-xs font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider hidden md:table-cell">Data Nasc.</th>
-                    <th className="px-3 lg:px-6 py-4 text-left text-xs font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider hidden lg:table-cell">Convênio</th>
-                    <th className="px-3 lg:px-6 py-4 text-left text-xs font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider hidden xl:table-cell">Unidade</th>
-                    <th className="px-3 lg:px-6 py-4 text-left text-xs font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider hidden lg:table-cell">Telefone</th>
-                    <th className="px-3 lg:px-6 py-4 text-left text-xs font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider">Ações</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider">Paciente</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider">CPF</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider">Data Nasc.</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider">Convênio</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider">Unidade</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider">Telefone</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider">Ações</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-blue-100 dark:divide-blue-800/50">
@@ -287,26 +287,23 @@ export default function PacientesPage() {
                   ) : (
                     paginated.map((p) => (
                       <tr key={p.id} className="hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all duration-200">
-                        <td className="px-3 lg:px-6 py-4 whitespace-nowrap">
+                        <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white font-bold">
                               {p.nome?.charAt(0) || "P"}
                             </div>
-                            <div className="min-w-0 flex-1">
-                              <div className="font-semibold text-slate-800 dark:text-slate-100 truncate">{p.nome}</div>
-                              <div className="text-xs text-slate-500 dark:text-slate-400 sm:hidden">
-                                {p.cpf && `CPF: ${p.cpf}`}
-                                {p.telefone && ` • Tel: ${p.telefone}`}
-                              </div>
+                            <div>
+                              <div className="font-semibold text-slate-800 dark:text-slate-100">{p.nome}</div>
+                              <div className="text-xs text-slate-500 dark:text-slate-400">ID: {p.id}</div>
                             </div>
                           </div>
                         </td>
-                        <td className="px-3 lg:px-6 py-4 whitespace-nowrap text-slate-700 dark:text-slate-300 font-medium hidden sm:table-cell">{p.cpf || "-"}</td>
-                        <td className="px-3 lg:px-6 py-4 whitespace-nowrap text-slate-700 dark:text-slate-300 hidden md:table-cell">{p.data_nascimento || "-"}</td>
-                        <td className="px-3 lg:px-6 py-4 whitespace-nowrap text-slate-700 dark:text-slate-300 hidden lg:table-cell">{p.convenio_nome || "-"}</td>
-                        <td className="px-3 lg:px-6 py-4 whitespace-nowrap text-slate-700 dark:text-slate-300 hidden xl:table-cell">{p.unidade_nome || "-"}</td>
-                        <td className="px-3 lg:px-6 py-4 whitespace-nowrap text-slate-700 dark:text-slate-300 hidden lg:table-cell">{p.telefone || "-"}</td>
-                        <td className="px-3 lg:px-6 py-4 whitespace-nowrap">
+                        <td className="px-6 py-4 whitespace-nowrap text-slate-700 dark:text-slate-300 font-medium">{p.cpf || "-"}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-slate-700 dark:text-slate-300">{p.data_nascimento || "-"}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-slate-700 dark:text-slate-300">{p.convenio_nome || "-"}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-slate-700 dark:text-slate-300">{p.unidade_nome || "-"}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-slate-700 dark:text-slate-300">{p.telefone || "-"}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">
                           <PacienteModal paciente={p} onSave={handleSavePaciente} />
                         </td>
                       </tr>

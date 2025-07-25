@@ -5,7 +5,6 @@ import {
   Clock, 
   User, 
   Plus, 
-  Search,
   Filter,
   MoreHorizontal,
   ChevronLeft,
@@ -40,7 +39,6 @@ import { useState } from 'react';
 export default function AgendaPage() {
   const [selectedDate, setSelectedDate] = useState(18);
   const [viewMode, setViewMode] = useState<'day' | 'week' | 'month'>('day');
-  const [searchTerm, setSearchTerm] = useState('');
 
   const appointments = [
     { 
@@ -148,9 +146,9 @@ export default function AgendaPage() {
 
   return (
     <MainLayout>
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-blue-900">
+      <div className="space-y-6 w-full max-w-none">
         {/* Header */}
-        <div className="relative bg-gradient-to-r from-blue-600 via-purple-600 to-blue-800 text-white rounded-2xl mx-6 mt-6 p-8 shadow-2xl overflow-hidden">
+        <div className="relative bg-gradient-to-r from-blue-600 via-purple-600 to-blue-800 text-white rounded-2xl p-8 shadow-2xl overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-r from-blue-600/90 to-purple-600/90 backdrop-blur-sm"></div>
           <div className="relative z-10">
             <div className="flex items-center justify-between flex-wrap gap-4">
@@ -172,7 +170,7 @@ export default function AgendaPage() {
         </div>
 
         {/* Estatísticas */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 p-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <div className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-white/20">
             <div className="flex items-center justify-between">
               <div>
@@ -223,19 +221,9 @@ export default function AgendaPage() {
         </div>
 
         {/* Controles */}
-        <div className="mx-6 mb-6 bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-white/20">
+        <div className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-white/20">
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <input
-                  type="text"
-                  placeholder="Buscar paciente, médico ou tipo..."
-                  className="pl-10 pr-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 w-80"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
               <button className="flex items-center gap-2 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all">
                 <Filter className="w-5 h-5" />
                 Filtros
@@ -262,7 +250,7 @@ export default function AgendaPage() {
         </div>
 
         {/* Lista de Consultas */}
-        <div className="mx-6 mb-6 bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 overflow-hidden">
+        <div className="bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20 overflow-hidden">
           <div className="p-6 border-b border-gray-200 dark:border-gray-700">
             <div className="flex items-center justify-between">
               <div>
@@ -281,7 +269,7 @@ export default function AgendaPage() {
           </div>
 
           <div className="p-6">
-            <div className="space-y-4">
+            <div className="space-y-4 max-h-96 overflow-y-auto">
               {appointments.map((appointment) => (
                 <div
                   key={appointment.id}

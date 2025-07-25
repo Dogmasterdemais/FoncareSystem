@@ -25,7 +25,11 @@ import {
   Shield,
   Sparkles,
   DollarSign,
-  Clock
+  Clock,
+  Stethoscope,
+  ClipboardList,
+  MonitorSpeaker,
+  UserCog
 } from 'lucide-react';
 import { useState } from 'react';
 import { useUnidade } from '../context/UnidadeContext';
@@ -97,6 +101,18 @@ const menu = [
       { href: '/rh/folha-pagamento', label: 'Folha de Pagamento', icon: DollarSign, description: 'Gestão da folha' },
       { href: '/rh/banco-horas', label: 'Banco de Horas', icon: Clock, description: 'Controle de ponto' },
       { href: '/contabil', label: 'Contábil', icon: FileText, description: 'Controle contábil' },
+    ]
+  },
+  {
+    label: 'Módulo Terapêutico', 
+    icon: Stethoscope, 
+    color: 'from-teal-500 to-teal-600',
+    description: 'Gestão avançada de terapias',
+    submenu: [
+      { href: '/salas', label: 'Gestão de Salas', icon: Building2, description: 'Controle de salas e capacidade' },
+      { href: '/agenda-terapeutica', label: 'Agenda Terapêutica', icon: Calendar, description: 'Agendamento avançado' },
+      { href: '/supervisao', label: 'Supervisão', icon: UserCog, description: 'Supervisão de atendimentos' },
+      { href: '/relatorios', label: 'Relatórios', icon: BarChart2, description: 'Relatórios terapêuticos' },
     ]
   },
   { 

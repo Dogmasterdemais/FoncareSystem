@@ -43,12 +43,19 @@ CREATE TABLE salas (
   especialidade_id UUID REFERENCES especialidades(id),
   unidade_id UUID REFERENCES unidades(id) NOT NULL,
   capacidade_maxima INTEGER DEFAULT 6,
+  capacidade_criancas INTEGER DEFAULT 6,
+  capacidade_profissionais INTEGER DEFAULT 3,
   equipamentos JSONB DEFAULT '[]',
   observacoes TEXT,
   ativo BOOLEAN DEFAULT true,
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW()
 );
+
+-- Adicionando campos necessários para colaboradores (valores hora para PJ)
+ALTER TABLE colaboradores 
+ADD COLUMN IF NOT EXISTS valor_hora_pj NUMERIC(10,2),
+ADD COLUMN IF NOT EXISTS valor_hora_clt NUMERIC(10,2);
 
 CREATE TABLE pacientes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -57,6 +64,7 @@ CREATE TABLE pacientes (
   telefone VARCHAR(20),
   data_nascimento DATE,
   documento VARCHAR(20),
+  cpf VARCHAR(14),
   unidade_id UUID REFERENCES unidades(id),
   convenio_id UUID REFERENCES convenios(id),
   convenio_nome VARCHAR(100),
@@ -499,3 +507,229 @@ CREATE TRIGGER update_folha_pj_updated_at BEFORE UPDATE ON folha_pagamento_pj
 
 CREATE TRIGGER update_banco_horas_updated_at BEFORE UPDATE ON banco_horas
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- ========================================
+-- EXTENSÕES PARA MÓDULO TERAPÊUTICO AVANÇADO
+-- ========================================
+
+-- Tabela para múltiplas especialidades por sala
+CREATE TABLE sala_especialidades (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  sala_id UUID REFERENCES salas(id) ON DELETE CASCADE,
+  especialidade_id UUID REFERENCES especialidades(id) ON DELETE CASCADE,
+  is_principal BOOLEAN DEFAULT false,
+  ordem INTEGER DEFAULT 1,
+  ativo BOOLEAN DEFAULT true,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW(),
+  UNIQUE(sala_id, especialidade_id)
+);
+
+-- Adicionando novos campos na tabela agendamentos para controle terapêutico
+ALTER TABLE agendamentos 
+ADD COLUMN IF NOT EXISTS status_terapeutico VARCHAR(30) DEFAULT 'agendado',
+ADD COLUMN IF NOT EXISTS horario_chegada TIMESTAMP,
+ADD COLUMN IF NOT EXISTS horario_inicio_real TIMESTAMP,
+ADD COLUMN IF NOT EXISTS horario_fim_real TIMESTAMP,
+ADD COLUMN IF NOT EXISTS duracao_real_minutos INTEGER,
+ADD COLUMN IF NOT EXISTS evolucao_realizada BOOLEAN DEFAULT false,
+ADD COLUMN IF NOT EXISTS supervisionado BOOLEAN DEFAULT false,
+ADD COLUMN IF NOT EXISTS liberado_pagamento BOOLEAN DEFAULT false,
+ADD COLUMN IF NOT EXISTS observacoes_supervisao TEXT;
+
+-- Constraint para status terapêutico
+ALTER TABLE agendamentos DROP CONSTRAINT IF EXISTS check_status_terapeutico;
+ALTER TABLE agendamentos ADD CONSTRAINT check_status_terapeutico 
+CHECK (status_terapeutico IN (
+  'agendado', 'chegou', 'pronto_para_terapia', 'em_atendimento', 
+  'sessao_concluida', 'nao_compareceu', 'cancelado', 'encerrado_antecipadamente'
+));
+
+-- Tabela de alocação de profissionais em salas por turno
+CREATE TABLE profissionais_salas_turnos (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  profissional_id UUID REFERENCES colaboradores(id) ON DELETE CASCADE,
+  sala_id UUID REFERENCES salas(id) ON DELETE CASCADE,
+  turno VARCHAR(10) CHECK (turno IN ('manha', 'tarde', 'noite')),
+  dia_semana INTEGER CHECK (dia_semana BETWEEN 1 AND 7), -- 1=Segunda, 7=Domingo
+  horario_inicio TIME NOT NULL,
+  horario_fim TIME NOT NULL,
+  data_inicio DATE NOT NULL,
+  data_fim DATE,
+  ativo BOOLEAN DEFAULT true,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW(),
+  UNIQUE(profissional_id, sala_id, turno, dia_semana, data_inicio)
+);
+
+-- Tabela de ocorrências da recepção
+CREATE TABLE ocorrencias_recepcao (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  agendamento_id UUID REFERENCES agendamentos(id) ON DELETE CASCADE,
+  paciente_id UUID REFERENCES pacientes(id),
+  tipo_ocorrencia VARCHAR(30) CHECK (tipo_ocorrencia IN (
+    'atraso', 'falha_convenio', 'ausencia_guia', 'falta', 
+    'encerramento_antecipado', 'problema_comportamental', 'emergencia'
+  )),
+  descricao TEXT NOT NULL,
+  minutos_atraso INTEGER,
+  desconto_aplicado BOOLEAN DEFAULT false,
+  valor_desconto DECIMAL(10,2),
+  responsavel_registro UUID REFERENCES colaboradores(id),
+  data_ocorrencia TIMESTAMP DEFAULT NOW(),
+  resolvido BOOLEAN DEFAULT false,
+  observacoes TEXT,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Tabela de controle de ocupação em tempo real
+CREATE TABLE ocupacao_salas_tempo_real (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  sala_id UUID REFERENCES salas(id) ON DELETE CASCADE,
+  data_ocupacao DATE NOT NULL,
+  turno VARCHAR(10) CHECK (turno IN ('manha', 'tarde', 'noite')),
+  horario TIME NOT NULL,
+  criancas_presentes INTEGER DEFAULT 0,
+  profissionais_presentes INTEGER DEFAULT 0,
+  percentual_ocupacao_criancas DECIMAL(5,2),
+  percentual_ocupacao_profissionais DECIMAL(5,2),
+  alerta_capacidade BOOLEAN DEFAULT false,
+  created_at TIMESTAMP DEFAULT NOW(),
+  UNIQUE(sala_id, data_ocupacao, turno, horario)
+);
+
+-- Tabela de evolução de sessões
+CREATE TABLE evolucoes_sessoes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  agendamento_id UUID REFERENCES agendamentos(id) ON DELETE CASCADE,
+  profissional_id UUID REFERENCES colaboradores(id),
+  data_evolucao TIMESTAMP DEFAULT NOW(),
+  conteudo_evolucao TEXT NOT NULL,
+  objetivos_alcancados TEXT,
+  observacoes_comportamentais TEXT,
+  proximos_passos TEXT,
+  materiais_utilizados TEXT[],
+  tempo_atendimento INTEGER, -- em minutos
+  qualidade_sessao INTEGER CHECK (qualidade_sessao BETWEEN 1 AND 5),
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Tabela de controle de pagamentos por sessão
+CREATE TABLE pagamentos_sessoes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  agendamento_id UUID REFERENCES agendamentos(id) ON DELETE CASCADE,
+  profissional_id UUID REFERENCES colaboradores(id),
+  evolucao_id UUID REFERENCES evolucoes_sessoes(id),
+  valor_base_hora DECIMAL(10,2) NOT NULL,
+  duracao_minutos INTEGER NOT NULL,
+  percentual_pagamento DECIMAL(5,2) DEFAULT 100.00, -- 50% para 30min, 100% para 60min
+  valor_calculado DECIMAL(10,2) NOT NULL,
+  aprovado_supervisao BOOLEAN DEFAULT false,
+  supervisor_id UUID REFERENCES colaboradores(id),
+  data_aprovacao TIMESTAMP,
+  observacoes_pagamento TEXT,
+  incluido_folha BOOLEAN DEFAULT false,
+  mes_referencia DATE,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Índices para performance
+CREATE INDEX IF NOT EXISTS idx_sala_especialidades_sala ON sala_especialidades(sala_id);
+CREATE INDEX IF NOT EXISTS idx_sala_especialidades_especialidade ON sala_especialidades(especialidade_id);
+CREATE INDEX IF NOT EXISTS idx_agendamentos_status_terapeutico ON agendamentos(status_terapeutico);
+CREATE INDEX IF NOT EXISTS idx_agendamentos_data_status ON agendamentos(data_agendamento, status_terapeutico);
+CREATE INDEX IF NOT EXISTS idx_profissionais_salas_turnos_ativo ON profissionais_salas_turnos(ativo, data_inicio, data_fim);
+CREATE INDEX IF NOT EXISTS idx_ocorrencias_data ON ocorrencias_recepcao(data_ocorrencia);
+CREATE INDEX IF NOT EXISTS idx_ocupacao_data_sala ON ocupacao_salas_tempo_real(data_ocupacao, sala_id);
+CREATE INDEX IF NOT EXISTS idx_evolucoes_agendamento ON evolucoes_sessoes(agendamento_id);
+CREATE INDEX IF NOT EXISTS idx_pagamentos_sessoes_mes ON pagamentos_sessoes(mes_referencia, profissional_id);
+
+-- Triggers para atualização automática
+CREATE TRIGGER update_sala_especialidades_updated_at BEFORE UPDATE ON sala_especialidades
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_profissionais_salas_turnos_updated_at BEFORE UPDATE ON profissionais_salas_turnos
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Função para calcular ocupação em tempo real
+CREATE OR REPLACE FUNCTION calcular_ocupacao_sala(
+  p_sala_id UUID,
+  p_data DATE,
+  p_horario TIME
+) RETURNS JSONB AS $$
+DECLARE
+  sala_info RECORD;
+  ocupacao_info JSONB;
+  criancas_count INTEGER;
+  profissionais_count INTEGER;
+BEGIN
+  -- Busca informações da sala
+  SELECT capacidade_maxima INTO sala_info
+  FROM salas WHERE id = p_sala_id;
+  
+  -- Conta crianças agendadas para o horário
+  SELECT COUNT(*) INTO criancas_count
+  FROM agendamentos 
+  WHERE sala_id = p_sala_id 
+    AND data_agendamento = p_data
+    AND horario_inicio <= p_horario 
+    AND horario_fim > p_horario
+    AND status_terapeutico IN ('pronto_para_terapia', 'em_atendimento');
+    
+  -- Conta profissionais alocados
+  SELECT COUNT(DISTINCT profissional_id) INTO profissionais_count
+  FROM agendamentos 
+  WHERE sala_id = p_sala_id 
+    AND data_agendamento = p_data
+    AND horario_inicio <= p_horario 
+    AND horario_fim > p_horario
+    AND status_terapeutico IN ('pronto_para_terapia', 'em_atendimento');
+  
+  ocupacao_info := jsonb_build_object(
+    'criancas_presentes', criancas_count,
+    'profissionais_presentes', profissionais_count,
+    'capacidade_maxima_criancas', sala_info.capacidade_maxima,
+    'capacidade_maxima_profissionais', 3,
+    'percentual_criancas', ROUND((criancas_count::DECIMAL / sala_info.capacidade_maxima) * 100, 2),
+    'percentual_profissionais', ROUND((profissionais_count::DECIMAL / 3) * 100, 2),
+    'alerta_capacidade', (criancas_count > sala_info.capacidade_maxima OR profissionais_count > 3)
+  );
+  
+  RETURN ocupacao_info;
+END;
+$$ LANGUAGE plpgsql;
+
+-- View para dashboard terapêutico
+CREATE OR REPLACE VIEW vw_dashboard_terapeutico AS
+SELECT 
+  a.id,
+  a.data_agendamento,
+  a.horario_inicio,
+  a.horario_fim,
+  a.status_terapeutico,
+  a.duracao_real_minutos,
+  a.evolucao_realizada,
+  a.supervisionado,
+  a.liberado_pagamento,
+  p.nome as paciente_nome,
+  c.nome_completo as profissional_nome,
+  s.nome as sala_nome,
+  s.cor as sala_cor,
+  e.nome as especialidade_nome,
+  ps.valor_calculado as valor_sessao,
+  ev.qualidade_sessao
+FROM agendamentos a
+LEFT JOIN pacientes p ON a.paciente_id = p.id
+LEFT JOIN colaboradores c ON a.profissional_id = c.id
+LEFT JOIN salas s ON a.sala_id = s.id
+LEFT JOIN especialidades e ON a.especialidade_id = e.id
+LEFT JOIN pagamentos_sessoes ps ON a.id = ps.agendamento_id
+LEFT JOIN evolucoes_sessoes ev ON a.id = ev.agendamento_id
+WHERE a.data_agendamento >= CURRENT_DATE - INTERVAL '30 days';
+
+-- Inserindo dados iniciais para teste
+INSERT INTO sala_especialidades (sala_id, especialidade_id, is_principal, ordem)
+SELECT s.id, s.especialidade_id, true, 1
+FROM salas s
+WHERE s.especialidade_id IS NOT NULL
+ON CONFLICT (sala_id, especialidade_id) DO NOTHING;

@@ -92,7 +92,7 @@ export interface FiltrosDashboard {
 
 export interface RelatorioExcel {
   nome_arquivo: string;
-  dados: any[];
+  dados: Record<string, unknown>[];
   colunas: {
     header: string;
     key: string;

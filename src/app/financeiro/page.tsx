@@ -180,9 +180,9 @@ export default function FinanceiroPage() {
 
   return (
     <MainLayout>
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-blue-900">
+      <div className="space-y-6 w-full max-w-none">
         {/* Header */}
-        <div className="relative bg-gradient-to-r from-green-600 via-emerald-600 to-green-800 text-white rounded-2xl mx-6 mt-6 p-8 shadow-2xl overflow-hidden">
+        <div className="relative bg-gradient-to-r from-green-600 via-emerald-600 to-green-800 text-white rounded-2xl p-8 shadow-2xl overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-r from-green-600/90 to-emerald-600/90 backdrop-blur-sm"></div>
           <div className="relative z-10">
             <div className="flex items-center justify-between flex-wrap gap-4">

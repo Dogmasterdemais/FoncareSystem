@@ -32,7 +32,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
       
       {/* Área principal com margem fixa */}
       <div className={`
-        flex flex-col h-screen transition-all duration-300
+        flex flex-col h-screen w-full transition-all duration-300
         ${sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'}
         ml-0
       `}>
@@ -46,8 +46,8 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
         </div>
         
         {/* Conteúdo principal com scroll próprio */}
-        <main className="flex-1 overflow-y-auto">
-          <div className="p-6 animate-fade-in">
+        <main className="flex-1 overflow-y-auto w-full">
+          <div className="p-6 w-full animate-fade-in">
             {children}
           </div>
         </main>
