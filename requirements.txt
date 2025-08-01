@@ -1,0 +1,28 @@
+# Dependências Python para o Módulo Financeiro
+# FoncareSystem
+
+# Banco de Dados
+psycopg2-binary==2.9.9
+supabase==2.5.0
+
+# Análise de Dados
+pandas==2.1.4
+numpy==1.24.4
+
+# Visualização
+matplotlib==3.8.2
+seaborn==0.13.0
+plotly==5.17.0
+
+# Relatórios
+openpyxl==3.1.2
+reportlab==4.0.8
+
+# Utilitários
+python-dotenv==1.0.0
+requests==2.31.0
+pytz==2023.3
+
+# Desenvolvimento (opcional)
+jupyter==1.0.0
+notebook==7.0.6
